@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2020-2022 KyoriPowered
+ * Copyright (c) 2020-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,17 +42,16 @@ public final class AdventureClient implements ClientModInitializer {
     // sync is optional, so fapi is not required
     if (FabricLoader.getInstance().isModLoaded(AdventureCommon.MOD_FAPI_NETWORKING)) {
       C2SPlayChannelEvents.REGISTER.register((handler, sender, client, channels) -> {
-        if (channels.contains(ServerboundRegisteredArgumentTypesPacket.ID)) {
+        if (channels.contains(ServerboundRegisteredArgumentTypesPacket.TYPE.id())) {
           client.execute(() -> {
-            if (ClientPlayNetworking.canSend(ServerboundRegisteredArgumentTypesPacket.ID)) {
+            if (ClientPlayNetworking.canSend(ServerboundRegisteredArgumentTypesPacket.TYPE)) {
               ServerboundRegisteredArgumentTypesPacket.of(ServerArgumentTypes.ids()).sendTo(sender);
             }
           });
         }
       });
-      ClientPlayNetworking.registerGlobalReceiver(ClientboundArgumentTypeMappingsPacket.ID, (client, handler, buffer, responder) -> {
-        final ClientboundArgumentTypeMappingsPacket pkt = ClientboundArgumentTypeMappingsPacket.from(buffer);
-        client.execute(() -> ServerArgumentTypes.receiveMappings(pkt));
+      ClientPlayNetworking.registerGlobalReceiver(ClientboundArgumentTypeMappingsPacket.TYPE, (pkt, ctx) -> {
+        ctx.client().execute(() -> ServerArgumentTypes.receiveMappings(pkt));
       });
     }
   }

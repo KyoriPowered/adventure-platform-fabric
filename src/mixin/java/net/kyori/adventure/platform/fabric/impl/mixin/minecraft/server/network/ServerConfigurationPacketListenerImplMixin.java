@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2020-2023 KyoriPowered
+ * Copyright (c) 2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,29 +23,26 @@
  */
 package net.kyori.adventure.platform.fabric.impl.mixin.minecraft.server.network;
 
-import io.netty.channel.Channel;
-import net.kyori.adventure.platform.fabric.impl.accessor.minecraft.network.ConnectionAccess;
+import io.netty.buffer.ByteBuf;
+import java.util.function.Function;
 import net.kyori.adventure.platform.fabric.impl.server.FriendlyByteBufBridge;
-import net.minecraft.network.Connection;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
-import org.jetbrains.annotations.Nullable;
-import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 
-@Mixin(ServerGamePacketListenerImpl.class)
-public class ServerGamePacketListenerImplMixin {
-  // Initialize attribute tracking the player for component rendering
-  @Inject(method = "<init>", at = @At(value = "FIELD", target = "Lnet/minecraft/server/level/ServerPlayer;connection:Lnet/minecraft/server/network/ServerGamePacketListenerImpl;", opcode = Opcodes.PUTFIELD))
-  private void adventure$initTracking(final MinecraftServer server, final Connection conn, final ServerPlayer player, final CommonListenerCookie cookie, final CallbackInfo ci) {
-    final @Nullable Channel chan = ((ConnectionAccess) conn).accessor$channel(); // XX: Broken mods that refuse to fix their fake player implementations throw an NPE here
-    if (chan != null) {
-      chan.attr(FriendlyByteBufBridge.CHANNEL_RENDER_DATA).set(player);
-    }
+@Mixin(ServerConfigurationPacketListenerImpl.class)
+public abstract class ServerConfigurationPacketListenerImplMixin extends ServerCommonPacketListenerImplMixin {
+  @ModifyArg(method = "handleConfigurationFinished", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/ProtocolInfo$Unbound;bind(Ljava/util/function/Function;)Lnet/minecraft/network/ProtocolInfo;"))
+  private Function<ByteBuf, RegistryFriendlyByteBuf> adventure$injectPointers(final Function<ByteBuf, RegistryFriendlyByteBuf> original) {
+    return buf -> {
+      final RegistryFriendlyByteBuf wrapped = original.apply(buf);
+      if (this.connection.getPacketListener() instanceof ServerGamePacketListenerImpl game) {
+        ((FriendlyByteBufBridge) wrapped).adventure$data(game.player);
+      }
+      return wrapped;
+    };
   }
 }

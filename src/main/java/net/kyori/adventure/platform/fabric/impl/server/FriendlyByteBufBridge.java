@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2020-2021 KyoriPowered
+ * Copyright (c) 2020-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,12 +23,11 @@
  */
 package net.kyori.adventure.platform.fabric.impl.server;
 
-import io.netty.util.AttributeKey;
 import net.kyori.adventure.pointer.Pointered;
 import org.jetbrains.annotations.Nullable;
 
 public interface FriendlyByteBufBridge {
-  AttributeKey<Pointered> CHANNEL_RENDER_DATA = AttributeKey.newInstance("adventure:render_data");
-
   void adventure$data(final @Nullable Pointered data);
+
+  Pointered adventure$data();
 }

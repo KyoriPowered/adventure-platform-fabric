@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2020-2023 KyoriPowered
+ * Copyright (c) 2020-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,6 @@
 package net.kyori.adventure.platform.fabric.impl.mixin.minecraft.server.level;
 
 import com.google.common.collect.MapMaker;
-import io.netty.channel.Channel;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -36,11 +35,8 @@ import net.kyori.adventure.platform.fabric.PlayerLocales;
 import net.kyori.adventure.platform.fabric.impl.ControlledAudience;
 import net.kyori.adventure.platform.fabric.impl.FabricAudiencesInternal;
 import net.kyori.adventure.platform.fabric.impl.LocaleHolderBridge;
-import net.kyori.adventure.platform.fabric.impl.accessor.minecraft.network.ConnectionAccess;
-import net.kyori.adventure.platform.fabric.impl.accessor.minecraft.network.ServerCommonPacketListenerImplAccess;
 import net.kyori.adventure.platform.fabric.impl.mixin.minecraft.world.entity.player.PlayerMixin;
 import net.kyori.adventure.platform.fabric.impl.server.FabricServerAudiencesImpl;
-import net.kyori.adventure.platform.fabric.impl.server.FriendlyByteBufBridge;
 import net.kyori.adventure.platform.fabric.impl.server.RenderableAudience;
 import net.kyori.adventure.platform.fabric.impl.server.ServerPlayerAudience;
 import net.kyori.adventure.platform.fabric.impl.server.ServerPlayerBridge;
@@ -142,10 +138,6 @@ public abstract class ServerPlayerMixin extends PlayerMixin implements Forwardin
   @Inject(method = "restoreFrom", at = @At("RETURN"))
   private void copyData(final ServerPlayer old, final boolean alive, final CallbackInfo ci) {
     FabricServerAudiencesImpl.forEachInstance(controller -> controller.bossBars().replacePlayer(old, (ServerPlayer) (Object) this));
-    final Channel channel = ((ConnectionAccess) ((ServerCommonPacketListenerImplAccess) this.connection).accessor$connection()).accessor$channel();
-    if (channel != null) {
-      channel.attr(FriendlyByteBufBridge.CHANNEL_RENDER_DATA).set(this);
-    }
   }
 
   @Inject(method = "disconnect", at = @At("RETURN"))

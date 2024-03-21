@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2020-2023 KyoriPowered
+ * Copyright (c) 2020-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ import net.kyori.adventure.platform.fabric.impl.NonWrappingComponentSerializer;
 import net.kyori.adventure.platform.fabric.impl.WrappedComponent;
 import net.kyori.adventure.text.ComponentLike;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -47,8 +48,8 @@ public interface ComponentMixin extends ComponentLike {
 
   @Mixin(Component.Serializer.class)
   abstract class SerializerMixin {
-    @Inject(method = "serialize(Lnet/minecraft/network/chat/Component;)Lcom/google/gson/JsonElement;", at = @At("HEAD"), cancellable = true)
-    private static void adventure$writeComponentBase(final Component text, final CallbackInfoReturnable<JsonElement> cir) {
+    @Inject(method = "serialize", at = @At("HEAD"), cancellable = true)
+    private static void adventure$writeComponentBase(final Component text, final HolderLookup.Provider prov, final CallbackInfoReturnable<JsonElement> cir) {
       // Skip serialization logic if we're a top-level our codec
       if (text instanceof WrappedComponent w) {
         final @Nullable Component converted = w.deepConvertedIfPresent();

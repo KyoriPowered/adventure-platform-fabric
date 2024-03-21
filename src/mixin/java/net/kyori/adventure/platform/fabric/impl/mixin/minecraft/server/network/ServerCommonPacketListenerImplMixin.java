@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2023 KyoriPowered
+ * Copyright (c) 2023-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,9 +32,11 @@ import net.kyori.adventure.platform.fabric.impl.server.FabricServerAudiencesImpl
 import net.kyori.adventure.platform.fabric.impl.server.ServerCommonPacketListenerImplBridge;
 import net.kyori.adventure.resource.ResourcePackCallback;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
+import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.common.ServerboundResourcePackPacket;
 import net.minecraft.server.network.ServerCommonPacketListenerImpl;
 import org.jetbrains.annotations.NotNull;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -47,6 +49,7 @@ public abstract class ServerCommonPacketListenerImplMixin implements ServerCommo
   private final Map<UUID, PackCallbackState> adventure$activeCallbacks = new ConcurrentHashMap<>();
 
   // @formatter:off
+  @Shadow @Final protected Connection connection;
   @Shadow protected abstract GameProfile shadow$playerProfile();
   // @formatter:on
 

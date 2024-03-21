@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2020-2023 KyoriPowered
+ * Copyright (c) 2020-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -64,6 +65,7 @@ import net.kyori.adventure.translation.Translator;
 import net.minecraft.commands.arguments.ComponentArgument;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.commands.synchronization.SingletonArgumentInfo;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.locale.Language;
 import net.minecraft.resources.ResourceLocation;
@@ -227,6 +229,7 @@ public class AdventureCommon implements ModInitializer {
   private void setupCustomArgumentTypes() {
     // sync is optional, so fapi is not required
     if (FabricLoader.getInstance().isModLoaded(MOD_FAPI_NETWORKING)) {
+      ClientboundArgumentTypeMappingsPacket.register();
       ServerboundRegisteredArgumentTypesPacket.register();
     }
 
@@ -235,8 +238,8 @@ public class AdventureCommon implements ModInitializer {
         res("component"),
         ComponentArgumentType.class,
         ComponentArgumentTypeSerializer.INSTANCE,
-        arg -> switch (arg.format()) {
-          case JSON -> ComponentArgument.textComponent();
+        (arg, ctx) -> switch (arg.format()) {
+          case JSON -> ComponentArgument.textComponent(ctx);
           case MINIMESSAGE -> StringArgumentType.greedyString();
         },
         null
@@ -247,7 +250,7 @@ public class AdventureCommon implements ModInitializer {
         res("key"),
         KeyArgumentType.class,
         SingletonArgumentInfo.contextFree(KeyArgumentType::key),
-        arg -> ResourceLocationArgument.id(),
+        (arg, ctx) -> ResourceLocationArgument.id(),
         null
       )
     );
@@ -268,16 +271,16 @@ public class AdventureCommon implements ModInitializer {
   }
 
   public static net.minecraft.network.chat.ChatType.@NotNull Bound chatTypeToNative(final ChatType.@NotNull Bound bound, final FabricAudiencesInternal audiences) {
-    final net.minecraft.network.chat.ChatType type = audiences.registryAccess()
+    final Holder<net.minecraft.network.chat.ChatType> type = audiences.registryAccess()
       .registryOrThrow(Registries.CHAT_TYPE)
-      .get(FabricAudiences.toNative(bound.type().key()));
+      .getHolder(FabricAudiences.toNative(bound.type().key()))
+      .orElseThrow(() -> new IllegalArgumentException("Could not resolve chat type for key " + bound.type().key()));
 
-    if (type == null) {
-      throw new IllegalArgumentException("Could not resolve chat type for key " + bound.type().key());
-    }
-
-    final net.minecraft.network.chat.ChatType.Bound ret = type.bind(audiences.toNative(bound.name()));
-    return bound.target() == null ? ret : ret.withTargetName(audiences.toNative(bound.target()));
+    return new net.minecraft.network.chat.ChatType.Bound(
+      type,
+      audiences.toNative(bound.name()),
+      Optional.ofNullable(bound.target()).map(audiences::toNative)
+    );
   }
 
 }

@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2022-2023 KyoriPowered
+ * Copyright (c) 2022-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,7 @@ import net.kyori.adventure.platform.fabric.impl.HiddenRequirement;
 import net.kyori.adventure.platform.fabric.impl.ServerArgumentType;
 import net.kyori.adventure.platform.fabric.impl.ServerArgumentTypes;
 import net.kyori.adventure.platform.fabric.impl.accessor.brigadier.builder.RequiredArgumentBuilderAccess;
+import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -75,7 +76,8 @@ public abstract class CommandsMixin {
     // This is super un-typesafe, but as long as the returned CommandNode is only used for serialization we are fine.
     // Repeat as long as a type is replaceable -- that way you can have a hierarchy of argument types.
     while (type != null && !knownExtraCommands.contains(type.id())) {
-      ((RequiredArgumentBuilderAccess) builder).accessor$type(type.fallbackProvider().apply(builder.getType()));
+      final CommandBuildContext ctx = CommandBuildContext.simple(source.registryAccess(), source.enabledFeatures());
+      ((RequiredArgumentBuilderAccess) builder).accessor$type(type.fallbackProvider().apply(builder.getType(), ctx));
       if (type.fallbackSuggestions() != null) {
         builder.suggests((SuggestionProvider) type.fallbackSuggestions());
       }

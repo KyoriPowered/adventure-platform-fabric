@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2020-2023 KyoriPowered
+ * Copyright (c) 2020-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -52,16 +52,14 @@ import net.kyori.adventure.resource.ResourcePackRequest;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.sound.SoundStop;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.title.Title;
 import net.kyori.adventure.title.TitlePart;
 import net.kyori.adventure.util.MonkeyBars;
 import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponentPatch;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.MessageSignature;
 import net.minecraft.network.chat.OutgoingChatMessage;
 import net.minecraft.network.chat.PlayerChatMessage;
@@ -81,13 +79,14 @@ import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.network.protocol.game.ClientboundStopSoundPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.Filterable;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.WrittenBookItem;
+import net.minecraft.world.item.component.WrittenBookContent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -252,19 +251,26 @@ public final class ServerPlayerAudience implements ControlledAudience {
 
   @Override
   public void openBook(final @NotNull Book book) {
+    if (book.pages().size() > WrittenBookContent.MAX_PAGES) {
+      throw new IllegalArgumentException("Book provided had " + book.pages().size() + " pages, but is only allowed a maximum of " + WrittenBookContent.MAX_PAGES);
+    }
+    final WrittenBookContent content = new WrittenBookContent(
+      Filterable.passThrough(validateField(this.adventure$plain(book.title()), WrittenBookContent.TITLE_MAX_LENGTH, "title")),
+      this.adventure$plain(book.author()),
+      0,
+      book.pages().stream()
+        .map(this.controller::toNative)
+        .map(Filterable::passThrough)
+        .toList(),
+      true
+    );
+
     final ItemStack bookStack = new ItemStack(Items.WRITTEN_BOOK, 1);
-    final CompoundTag bookTag = bookStack.getOrCreateTag();
-    bookTag.putString(WrittenBookItem.TAG_TITLE, validateField(this.adventure$plain(book.title()), WrittenBookItem.TITLE_MAX_LENGTH, WrittenBookItem.TAG_TITLE));
-    bookTag.putString(WrittenBookItem.TAG_AUTHOR, this.adventure$plain(book.author()));
-    final ListTag pages = new ListTag();
-    if (book.pages().size() > WrittenBookItem.MAX_PAGES) {
-      throw new IllegalArgumentException("Book provided had " + book.pages().size() + " pages, but is only allowed a maximum of " + WrittenBookItem.MAX_PAGES);
-    }
-    for (final Component page : book.pages()) {
-      pages.add(StringTag.valueOf(validateField(this.adventure$serialize(page), WrittenBookItem.PAGE_LENGTH, "page")));
-    }
-    bookTag.put(WrittenBookItem.TAG_PAGES, pages);
-    bookTag.putBoolean(WrittenBookItem.TAG_RESOLVED, true); // todo: any parseable texts?
+    bookStack.applyComponents(
+      DataComponentPatch.builder()
+      .set(DataComponents.WRITTEN_BOOK_CONTENT, content)
+      .build()
+    );
 
     final ItemStack previous = this.player.getInventory().getSelected();
     this.sendPacket(new ClientboundContainerSetSlotPacket(-2, this.player.containerMenu.getStateId(), this.player.getInventory().selected, bookStack));
@@ -286,10 +292,6 @@ public final class ServerPlayerAudience implements ControlledAudience {
 
   private String adventure$plain(final @NotNull Component component) {
     return PlainTextComponentSerializer.plainText().serialize(this.controller.renderer().render(component, this));
-  }
-
-  private String adventure$serialize(final @NotNull Component component) {
-    return GsonComponentSerializer.gson().serialize(this.controller.renderer().render(component, this));
   }
 
   @Override
@@ -382,7 +384,7 @@ public final class ServerPlayerAudience implements ControlledAudience {
         pack.uri().toASCIIString(),
         pack.hash(),
         request.required(),
-        it.hasNext() ? null : prompt
+        it.hasNext() ? Optional.empty() : Optional.of(prompt)
       ));
 
       if (request.callback() != ResourcePackCallback.noOp()) {

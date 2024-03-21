@@ -44,7 +44,8 @@ indraSpotlessLicenser {
 }
 
 spotless {
-  ratchetFrom("origin/mc/${libs.versions.minecraft.get().splitToSequence('.').take(2).joinToString(".")}")
+  //ratchetFrom("origin/mc/${libs.versions.minecraft.get().splitToSequence('.').take(2).joinToString(".")}")
+  ratchetFrom("origin/mc/1.20")
 
   java {
     importOrderFile(rootProject.file(".spotless/kyori.importorder"))
@@ -205,7 +206,7 @@ loom {
 
     configureEach {
       vmArgs(
-        "-Dmixin.debug.countInjections=true",
+        // "-Dmixin.debug.countInjections=true",
         // "-Dmixin.debug.strict=true", // Breaks FAPI :(
       )
     }
@@ -236,7 +237,9 @@ loom {
 
 dependencies {
   "testmodRuntimeOnly"(permissionsApiCompat.output)
-  "modPermissionsApiCompat"(libs.fabric.permissionsApi)
+  "modPermissionsApiCompat"(libs.fabric.permissionsApi) {
+    isTransitive = false
+  }
 
   // Testmod-specific dependencies
   "modTestmod"(libs.fabric.api)

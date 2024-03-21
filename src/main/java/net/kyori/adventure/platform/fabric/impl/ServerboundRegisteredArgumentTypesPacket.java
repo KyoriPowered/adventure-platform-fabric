@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2022 KyoriPowered
+ * Copyright (c) 2022-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,13 +23,15 @@
  */
 package net.kyori.adventure.platform.fabric.impl;
 
-import io.netty.buffer.Unpooled;
 import java.util.HashSet;
 import java.util.Set;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.kyori.adventure.Adventure;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 
@@ -40,14 +42,18 @@ import org.jetbrains.annotations.NotNull;
  *
  * @param known Known argument type ids
  */
-public record ServerboundRegisteredArgumentTypesPacket(Set<ResourceLocation> known) {
-  public static final ResourceLocation ID = new ResourceLocation(Adventure.NAMESPACE, "registered_args");
+public record ServerboundRegisteredArgumentTypesPacket(Set<ResourceLocation> known) implements CustomPacketPayload {
+  public static final CustomPacketPayload.Type<ServerboundRegisteredArgumentTypesPacket> TYPE = new CustomPacketPayload.Type<>(AdventureCommon.res("registered_args"));
+  private static final StreamCodec<RegistryFriendlyByteBuf, ServerboundRegisteredArgumentTypesPacket> CODEC = StreamCodec.of(
+    ServerboundRegisteredArgumentTypesPacket::encode,
+    ServerboundRegisteredArgumentTypesPacket::of
+  );
 
   public static void register() {
-    ServerPlayNetworking.registerGlobalReceiver(ID, (server, player, handler, buffer, responder) -> {
-      final ServerboundRegisteredArgumentTypesPacket pkt = ServerboundRegisteredArgumentTypesPacket.of(buffer);
-      server.execute(() -> { // on main thread
-        ServerArgumentTypes.knownArgumentTypes(player, pkt.known, responder);
+    PayloadTypeRegistry.playC2S().register(TYPE, CODEC);
+    ServerPlayNetworking.registerGlobalReceiver(TYPE, (pkt, ctx) -> {
+      ctx.player().getServer().execute(() -> { // on main thread
+        ServerArgumentTypes.knownArgumentTypes(ctx.player(), pkt.known, ctx.responseSender());
       });
     });
   }
@@ -65,9 +71,9 @@ public record ServerboundRegisteredArgumentTypesPacket(Set<ResourceLocation> kno
     return of(items);
   }
 
-  private void toPacket(final FriendlyByteBuf buffer) {
-    buffer.writeVarInt(this.known.size());
-    for (final ResourceLocation id : this.known) {
+  private static void encode(final FriendlyByteBuf buffer, final ServerboundRegisteredArgumentTypesPacket pkt) {
+    buffer.writeVarInt(pkt.known.size());
+    for (final ResourceLocation id : pkt.known) {
       buffer.writeResourceLocation(id);
     }
   }
@@ -78,8 +84,11 @@ public record ServerboundRegisteredArgumentTypesPacket(Set<ResourceLocation> kno
    * @param sender the sender to send the packet to
    */
   public void sendTo(final PacketSender sender) {
-    final FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer(this.known.size() * 8));
-    this.toPacket(buffer);
-    sender.sendPacket(ID, buffer);
+    sender.sendPacket(this);
+  }
+
+  @Override
+  public @NotNull Type<? extends CustomPacketPayload> type() {
+    return TYPE;
   }
 }

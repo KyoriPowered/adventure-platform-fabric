@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2020-2022 KyoriPowered
+ * Copyright (c) 2020-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,30 +23,23 @@
  */
 package net.kyori.adventure.platform.fabric.impl.mixin.minecraft.network;
 
-import net.kyori.adventure.platform.fabric.impl.WrappedComponent;
 import net.kyori.adventure.platform.fabric.impl.server.FriendlyByteBufBridge;
 import net.kyori.adventure.pointer.Pointered;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 @Mixin(FriendlyByteBuf.class)
-public class FriendlyByteBufMixin implements FriendlyByteBufBridge {
+public abstract class FriendlyByteBufMixin implements FriendlyByteBufBridge {
   private @Nullable Pointered adventure$data;
-
-  @ModifyVariable(method = "writeComponent", at = @At("HEAD"), argsOnly = true)
-  private Component adventure$localizeComponent(final Component input) {
-    if (this.adventure$data != null && input instanceof WrappedComponent) {
-      return ((WrappedComponent) input).rendered(this.adventure$data);
-    }
-    return input;
-  }
 
   @Override
   public void adventure$data(final @Nullable Pointered data) {
     this.adventure$data = data;
+  }
+
+  @Override
+  public Pointered adventure$data() {
+    return this.adventure$data;
   }
 }

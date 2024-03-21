@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2020-2024 KyoriPowered
+ * Copyright (c) 2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,22 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package net.kyori.adventure.platform.fabric.impl.mixin.minecraft.network.chat;
+package net.kyori.adventure.platform.fabric.impl;
 
-import net.kyori.adventure.platform.fabric.impl.NonWrappingComponentSerializer;
-import net.minecraft.network.chat.ClickEvent;
-import org.jetbrains.annotations.NotNull;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import com.mojang.serialization.DynamicOps;
 
-@Mixin(ClickEvent.Action.class)
-abstract class ClickEvent_ActionMixin {
-  @Redirect(method = "filterForSerialization", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/chat/ClickEvent$Action;isAllowedFromServer()Z"))
-  private static boolean adventure$redirectIsAllowedFromServer(final ClickEvent.@NotNull Action action) {
-    if (NonWrappingComponentSerializer.bypassIsAllowedFromServer()) {
-      return true;
-    }
-    return action.isAllowedFromServer();
-  }
+public interface DelegatingOpsBridge {
+  DynamicOps<?> adventure$bridge$delegate();
 }

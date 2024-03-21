@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2022 KyoriPowered
+ * Copyright (c) 2022-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,18 +23,31 @@
  */
 package net.kyori.adventure.platform.fabric.impl;
 
-import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
-import net.kyori.adventure.Adventure;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 
-public record ClientboundArgumentTypeMappingsPacket(Int2ObjectMap<ResourceLocation> mappings) {
-  public static final ResourceLocation ID = new ResourceLocation(Adventure.NAMESPACE, "registered_arg_mappings");
+import static net.kyori.adventure.platform.fabric.impl.AdventureCommon.res;
 
-  public static ClientboundArgumentTypeMappingsPacket from(final FriendlyByteBuf buffer) {
+public record ClientboundArgumentTypeMappingsPacket(Int2ObjectMap<ResourceLocation> mappings) implements CustomPacketPayload {
+  public static final CustomPacketPayload.Type<ClientboundArgumentTypeMappingsPacket> TYPE = new Type<>(res("registered_arg_mappings"));
+  private static final StreamCodec<RegistryFriendlyByteBuf, ClientboundArgumentTypeMappingsPacket> CODEC = StreamCodec.of(
+    ClientboundArgumentTypeMappingsPacket::encode,
+    ClientboundArgumentTypeMappingsPacket::decode
+  );
+
+  public static void register() {
+    PayloadTypeRegistry.playS2C().register(ClientboundArgumentTypeMappingsPacket.TYPE, ClientboundArgumentTypeMappingsPacket.CODEC);
+  }
+
+  public static ClientboundArgumentTypeMappingsPacket decode(final FriendlyByteBuf buffer) {
     final Int2ObjectMap<ResourceLocation> map = buffer.readMap(
       Int2ObjectArrayMap::new,
       FriendlyByteBuf::readVarInt,
@@ -43,17 +56,20 @@ public record ClientboundArgumentTypeMappingsPacket(Int2ObjectMap<ResourceLocati
     return new ClientboundArgumentTypeMappingsPacket(map);
   }
 
-  private FriendlyByteBuf serialize() {
-    final FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+  private static void encode(final FriendlyByteBuf buf, final ClientboundArgumentTypeMappingsPacket pkt) {
     buf.writeMap(
-      this.mappings,
+      pkt.mappings,
       FriendlyByteBuf::writeVarInt,
       FriendlyByteBuf::writeResourceLocation
     );
-    return buf;
   }
 
   public void sendTo(final PacketSender responder) {
-    responder.sendPacket(ID, this.serialize());
+    responder.sendPacket(this);
+  }
+
+  @Override
+  public @NotNull Type<? extends CustomPacketPayload> type() {
+    return TYPE;
   }
 }

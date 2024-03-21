@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2023 KyoriPowered
+ * Copyright (c) 2023-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -61,6 +61,7 @@ class ComponentConversionTest extends BootstrappedTest {
       Component.translatable("gameMode.creative", style(NamedTextColor.RED).font(Key.key("uniform"))),
       Component.text("Hello").append(Component.text(" friends", TextColor.color(0xaabbcc))),
       Component.keybind("key.jump")
+    // Component.text("Hello world", style(new ItemStack(Items.ACACIA_LOG, 1).asHoverEvent())) // todo: needs changes in adventure to match exactly
     )
       .map(comp -> named(MiniMessage.miniMessage().serialize(comp), comp));
   }
@@ -75,7 +76,7 @@ class ComponentConversionTest extends BootstrappedTest {
   @TestOnComponents
   void testComponentEqualSerializationWrapped(final Component input) {
     final JsonElement serialized = GsonComponentSerializer.gson().serializeToTree(input);
-    final JsonElement serializedNative = net.minecraft.network.chat.Component.Serializer.toJsonTree(this.toNativeWrapped(input));
+    final JsonElement serializedNative = this.componentToJson(this.toNativeWrapped(input));
 
     assertJsonTreesEqual(serializedNative, serialized);
   }
@@ -83,7 +84,7 @@ class ComponentConversionTest extends BootstrappedTest {
   @TestOnComponents
   void testNonWrappingSerializerComponentsEqual(final Component input) {
     final JsonElement serialized = GsonComponentSerializer.gson().serializeToTree(input);
-    final JsonElement serializedNative = net.minecraft.network.chat.Component.Serializer.toJsonTree(net.minecraft.network.chat.Component.Serializer.fromJson(serialized));
+    final JsonElement serializedNative = this.componentToJson(net.minecraft.network.chat.Component.Serializer.fromJson(serialized, lookup()));
 
     assertJsonTreesEqual(serializedNative, serialized);
   }
@@ -93,7 +94,7 @@ class ComponentConversionTest extends BootstrappedTest {
     final JsonElement serialized = GsonComponentSerializer.gson().serializeToTree(input);
     final net.minecraft.network.chat.Component mc = this.toNativeWrapped(input);
     mc.getStyle(); // trigger deep conversion
-    final JsonElement serializedNative = net.minecraft.network.chat.Component.Serializer.toJsonTree(mc);
+    final JsonElement serializedNative = this.componentToJson(mc);
 
     assertJsonTreesEqual(serializedNative, serialized);
   }
@@ -102,7 +103,7 @@ class ComponentConversionTest extends BootstrappedTest {
   void testSerializationEqualWhenWrappedNested(final Component input) {
     final JsonElement serialized = GsonComponentSerializer.gson().serializeToTree(Component.text("Adventure says: ").append(input));
     final net.minecraft.network.chat.Component mc = net.minecraft.network.chat.Component.literal("Adventure says: ").append(this.toNativeWrapped(input));
-    final JsonElement serializedNative = net.minecraft.network.chat.Component.Serializer.toJsonTree(mc);
+    final JsonElement serializedNative = this.componentToJson(mc);
 
     assertJsonTreesEqual(serializedNative, serialized);
   }

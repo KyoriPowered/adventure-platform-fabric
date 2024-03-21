@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2020-2023 KyoriPowered
+ * Copyright (c) 2020-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,21 +23,35 @@
  */
 package net.kyori.adventure.platform.fabric.impl;
 
+import com.google.common.base.Suppliers;
+import com.mojang.serialization.JsonOps;
+import java.util.function.Supplier;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.ComponentSerializer;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.chat.MutableComponent;
+import org.jetbrains.annotations.NotNull;
 
 public final class NonWrappingComponentSerializer implements ComponentSerializer<Component, Component, net.minecraft.network.chat.Component> {
   public static final NonWrappingComponentSerializer INSTANCE = new NonWrappingComponentSerializer();
 
-  private final ThreadLocal<Boolean> bypassIsAllowedFromServer = ThreadLocal.withInitial(() -> false);
+  private static final ThreadLocal<Boolean> BYPASS_IS_ALLOWED_FROM_SERVER = ThreadLocal.withInitial(() -> false);
+  private final Supplier<HolderLookup.@NotNull Provider> holderProvider;
 
   private NonWrappingComponentSerializer() {
+    this(Suppliers.ofInstance(RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY)));
   }
 
-  public boolean bypassIsAllowedFromServer() {
-    return this.bypassIsAllowedFromServer.get();
+  private NonWrappingComponentSerializer(final @NotNull Supplier<HolderLookup.@NotNull Provider> provider) {
+    this.holderProvider = provider;
+  }
+
+  public static boolean bypassIsAllowedFromServer() {
+    return BYPASS_IS_ALLOWED_FROM_SERVER.get();
   }
 
   @Override
@@ -46,17 +60,20 @@ public final class NonWrappingComponentSerializer implements ComponentSerializer
       return ((WrappedComponent) input).wrapped();
     }
 
-    return GsonComponentSerializer.gson().deserializeFromTree(net.minecraft.network.chat.Component.Serializer.toJsonTree(input));
+    return GsonComponentSerializer.gson().deserializeFromTree(
+      ComponentSerialization.CODEC.encodeStart(this.holderProvider.get().createSerializationContext(JsonOps.INSTANCE), input)
+      .getOrThrow(false, $ -> {})
+    );
   }
 
   @Override
   public MutableComponent serialize(final Component component) {
-    this.bypassIsAllowedFromServer.set(true);
+    BYPASS_IS_ALLOWED_FROM_SERVER.set(true);
     final MutableComponent mutableComponent;
     try {
-      mutableComponent = net.minecraft.network.chat.Component.Serializer.fromJson(GsonComponentSerializer.gson().serializeToTree(component));
+      mutableComponent = net.minecraft.network.chat.Component.Serializer.fromJson(GsonComponentSerializer.gson().serializeToTree(component), this.holderProvider.get());
     } finally {
-      this.bypassIsAllowedFromServer.set(false);
+      BYPASS_IS_ALLOWED_FROM_SERVER.set(false);
     }
     return mutableComponent;
   }

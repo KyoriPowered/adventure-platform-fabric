@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2022 KyoriPowered
+ * Copyright (c) 2022-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,8 @@ package net.kyori.adventure.platform.fabric.impl;
 
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-import java.util.function.Function;
+import java.util.function.BiFunction;
+import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.synchronization.ArgumentTypeInfo;
 import net.minecraft.resources.ResourceLocation;
 
@@ -43,7 +44,7 @@ public record ServerArgumentType<T extends ArgumentType<?>>(
   ResourceLocation id,
   Class<? super T> type,
   ArgumentTypeInfo<T, ? extends ArgumentTypeInfo.Template<T>> argumentTypeInfo,
-  Function<T, ArgumentType<?>> fallbackProvider,
+  BiFunction<T, CommandBuildContext, ArgumentType<?>> fallbackProvider,
   SuggestionProvider<?> fallbackSuggestions
 ) {
 }

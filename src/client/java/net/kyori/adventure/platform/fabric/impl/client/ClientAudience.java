@@ -1,7 +1,7 @@
 /*
  * This file is part of adventure-platform-fabric, licensed under the MIT License.
  *
- * Copyright (c) 2020-2023 KyoriPowered
+ * Copyright (c) 2020-2024 KyoriPowered
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -288,7 +288,7 @@ public class ClientAudience implements ControlledAudience {
 
   @Override
   public void openBook(final @NotNull Book book) {
-    this.client.setScreen(new BookViewScreen(new AdventureBookAccess(book, this.controller.partition(), this.controller.renderer())));
+    this.client.setScreen(new BookViewScreen(new BookViewScreen.BookAccess(book.pages().stream().map(this.controller::toNative).toList())));
   }
 
   @Override
